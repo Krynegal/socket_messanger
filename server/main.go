@@ -54,11 +54,11 @@ func main() {
 			for {
 				select {
 				case message := <-firstConn:
-					if _, err = tunnel.conn1.Write([]byte(fmt.Sprintf("%s\n", strings.TrimSpace(message)))); err != nil {
+					if _, err = tunnel.conn1.Write([]byte(fmt.Sprintf("-> %s\n", strings.TrimSpace(message)))); err != nil {
 						log.Printf("failed to respond to client: %v\n", err)
 					}
 				case message := <-secondConn:
-					if _, err = tunnel.conn2.Write([]byte(fmt.Sprintf("%s\n", strings.TrimSpace(message)))); err != nil {
+					if _, err = tunnel.conn2.Write([]byte(fmt.Sprintf("-> %s\n", strings.TrimSpace(message)))); err != nil {
 						log.Printf("failed to respond to client: %v\n", err)
 					}
 				}
