@@ -44,29 +44,45 @@ func main() {
 			fmt.Printf("conn2: %s\n", con.RemoteAddr().String())
 		}
 
+		firstConn := make(chan string)
+		secondConn := make(chan string)
+
 		if tunnel.conn1 != nil && tunnel.conn2 != nil {
-			go handleClientRequest(tunnel.conn1, tunnel.conn2)
+			go handleClientRequest(tunnel.conn1, secondConn)
+			go handleClientRequest(tunnel.conn2, firstConn)
+
+			for {
+				select {
+				case message := <-firstConn:
+					if _, err = tunnel.conn1.Write([]byte(fmt.Sprintf("%s\n", strings.TrimSpace(message)))); err != nil {
+						log.Printf("failed to respond to client: %v\n", err)
+					}
+				case message := <-secondConn:
+					if _, err = tunnel.conn2.Write([]byte(fmt.Sprintf("%s\n", strings.TrimSpace(message)))); err != nil {
+						log.Printf("failed to respond to client: %v\n", err)
+					}
+				}
+			}
 		}
 	}
 }
 
-func handleClientRequest(con1 net.Conn, con2 net.Conn) {
-	defer con1.Close()
-	defer con2.Close()
+func handleClientRequest(con net.Conn, oChan chan string) {
+	defer con.Close()
 
-	clientReader := bufio.NewReader(con1)
+	clientReader := bufio.NewReader(con)
 
 	for {
 		clientRequest, err := clientReader.ReadString('\n')
 
 		switch err {
 		case nil:
-			clientRequest := strings.TrimSpace(clientRequest)
+			clientRequest = strings.TrimSpace(clientRequest)
 			if clientRequest == ":QUIT" {
 				log.Println("client requested server to close the connection so closing")
 				return
 			} else {
-				log.Println(clientRequest)
+				oChan <- clientRequest
 			}
 		case io.EOF:
 			log.Println("client closed the connection by terminating the process")
@@ -74,10 +90,6 @@ func handleClientRequest(con1 net.Conn, con2 net.Conn) {
 		default:
 			log.Printf("error: %v\n", err)
 			return
-		}
-
-		if _, err = con2.Write([]byte(fmt.Sprintf("%s\n", strings.TrimSpace(clientRequest)))); err != nil {
-			log.Printf("failed to respond to client: %v\n", err)
 		}
 	}
 }
