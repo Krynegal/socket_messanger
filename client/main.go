@@ -12,7 +12,6 @@ import (
 
 func clientSend(clientReader *bufio.Reader, iChan chan string) {
 	for {
-		//fmt.Print("->")
 		clientRequest, err := clientReader.ReadString('\n')
 
 		switch err {
@@ -37,7 +36,7 @@ func clientGet(serverReader *bufio.Reader, oChan chan string) {
 		case nil:
 			oChan <- strings.TrimSpace(serverResponse)
 		case io.EOF:
-			log.Println("server closed the connection")
+			log.Println("server closed the connection1")
 			return
 		default:
 			log.Printf("server error: %v\n", err)

@@ -29,6 +29,7 @@ func main() {
 	defer listener.Close()
 
 	tunnel := NewTunnel()
+	connectedUsers := make(map[int]string, 2)
 
 	numConn := 0
 	for numConn != 2 {
@@ -37,6 +38,8 @@ func main() {
 			log.Println(err)
 			continue
 		}
+
+		connectedUsers[numConn] = handleName(con)
 
 		numConn++
 		if tunnel.conn1 == nil {
@@ -57,16 +60,25 @@ func main() {
 	for {
 		select {
 		case message := <-firstConn:
-			if _, err := tunnel.conn1.Write([]byte(fmt.Sprintf("-> %s\n", strings.TrimSpace(message)))); err != nil {
+			if _, err := tunnel.conn1.Write([]byte(fmt.Sprintf("%s-> %s\n", connectedUsers[1], strings.TrimSpace(message)))); err != nil {
 				log.Printf("failed to respond to client: %v\n", err)
 			}
 		case message := <-secondConn:
-			if _, err := tunnel.conn2.Write([]byte(fmt.Sprintf("-> %s\n", strings.TrimSpace(message)))); err != nil {
+			if _, err := tunnel.conn2.Write([]byte(fmt.Sprintf("%s-> %s\n", connectedUsers[0], strings.TrimSpace(message)))); err != nil {
 				log.Printf("failed to respond to client: %v\n", err)
 			}
 		}
 	}
 
+}
+
+func handleName(con net.Conn) string {
+	if _, err := con.Write([]byte("Enter your name:\n")); err != nil {
+		log.Printf("failed: %v\n", err)
+	}
+	clientReader := bufio.NewReader(con)
+	clientRequest, _ := clientReader.ReadString('\n')
+	return strings.TrimSpace(clientRequest)
 }
 
 func handleClientRequest(con net.Conn, oChan chan string) {
