@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"sync"
 )
 
 type tunnel struct {
@@ -30,6 +31,9 @@ func main() {
 
 	tunnel := NewTunnel()
 	connectedUsers := make(map[int]string, 2)
+	nameChan := make(chan string)
+
+	var wg sync.WaitGroup
 
 	numConn := 0
 	for numConn != 2 {
@@ -39,9 +43,10 @@ func main() {
 			continue
 		}
 
-		connectedUsers[numConn] = handleName(con)
-
 		numConn++
+		wg.Add(1)
+		go handleName(con, nameChan, &wg, numConn)
+
 		if tunnel.conn1 == nil {
 			tunnel.conn1 = con
 			fmt.Printf("user 1: %s\n", con.RemoteAddr().String())
@@ -50,6 +55,16 @@ func main() {
 			fmt.Printf("user 2: %s\n", con.RemoteAddr().String())
 		}
 	}
+
+	id := 0
+	for name := range nameChan {
+		connectedUsers[id] = name
+		fmt.Println(connectedUsers)
+		id++
+	}
+	wg.Wait()
+
+	fmt.Println("here we go")
 
 	firstConn := make(chan string)
 	secondConn := make(chan string)
@@ -72,13 +87,17 @@ func main() {
 
 }
 
-func handleName(con net.Conn) string {
+func handleName(con net.Conn, nameChan chan string, wg *sync.WaitGroup, numConn int) {
 	if _, err := con.Write([]byte("Enter your name:\n")); err != nil {
 		log.Printf("failed: %v\n", err)
 	}
 	clientReader := bufio.NewReader(con)
 	clientRequest, _ := clientReader.ReadString('\n')
-	return strings.TrimSpace(clientRequest)
+	nameChan <- strings.TrimSpace(clientRequest)
+	if numConn == 2 {
+		close(nameChan)
+	}
+	wg.Done()
 }
 
 func handleClientRequest(con net.Conn, oChan chan string) {
