@@ -8,19 +8,9 @@ import (
 	"net"
 	"strings"
 	"sync"
+
+	"github.com/Krynegal/socket_messanger/internal/tunnel"
 )
-
-type tunnel struct {
-	conn1 net.Conn
-	conn2 net.Conn
-}
-
-func NewTunnel() *tunnel {
-	return &tunnel{
-		conn1: nil,
-		conn2: nil,
-	}
-}
 
 func main() {
 	listener, err := net.Listen("tcp", "0.0.0.0:9999")
@@ -29,7 +19,7 @@ func main() {
 	}
 	defer listener.Close()
 
-	tunnel := NewTunnel()
+	tunnelConn := tunnel.NewTunnel()
 	connectedUsers := make(map[int]string, 2)
 	nameChan := make(chan string)
 
@@ -47,11 +37,11 @@ func main() {
 		wg.Add(1)
 		go handleName(con, nameChan, &wg, numConn)
 
-		if tunnel.conn1 == nil {
-			tunnel.conn1 = con
+		if tunnelConn.Conn1 == nil {
+			tunnelConn.Conn1 = con
 			fmt.Printf("user 1: %s\n", con.RemoteAddr().String())
 		} else {
-			tunnel.conn2 = con
+			tunnelConn.Conn2 = con
 			fmt.Printf("user 2: %s\n", con.RemoteAddr().String())
 		}
 	}
@@ -69,17 +59,17 @@ func main() {
 	firstConn := make(chan string)
 	secondConn := make(chan string)
 
-	go handleClientRequest(tunnel.conn1, secondConn)
-	go handleClientRequest(tunnel.conn2, firstConn)
+	go handleClientRequest(tunnelConn.Conn1, secondConn)
+	go handleClientRequest(tunnelConn.Conn2, firstConn)
 
 	for {
 		select {
 		case message := <-firstConn:
-			if _, err := tunnel.conn1.Write([]byte(fmt.Sprintf("%s-> %s\n", connectedUsers[1], strings.TrimSpace(message)))); err != nil {
+			if _, err := tunnelConn.Conn1.Write([]byte(fmt.Sprintf("%s-> %s\n", connectedUsers[1], strings.TrimSpace(message)))); err != nil {
 				log.Printf("failed to respond to client: %v\n", err)
 			}
 		case message := <-secondConn:
-			if _, err := tunnel.conn2.Write([]byte(fmt.Sprintf("%s-> %s\n", connectedUsers[0], strings.TrimSpace(message)))); err != nil {
+			if _, err := tunnelConn.Conn2.Write([]byte(fmt.Sprintf("%s-> %s\n", connectedUsers[0], strings.TrimSpace(message)))); err != nil {
 				log.Printf("failed to respond to client: %v\n", err)
 			}
 		}
