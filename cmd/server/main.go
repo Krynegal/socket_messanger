@@ -16,7 +16,7 @@ import (
 var roomSize = 2
 
 func main() {
-	listener, err := net.Listen("tcp", "localhost:9999")
+	listener, err := net.Listen("tcp", ":9999")
 	if err != nil {
 		log.Fatalln(err)
 	}
