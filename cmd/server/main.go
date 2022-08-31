@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/Krynegal/socket_messanger/configs"
 	"github.com/Krynegal/socket_messanger/internal/conn"
 	"github.com/Krynegal/socket_messanger/internal/message"
 	"github.com/Krynegal/socket_messanger/internal/room"
@@ -16,7 +17,9 @@ import (
 var roomSize = 2
 
 func main() {
-	listener, err := net.Listen("tcp", "127.0.0.1:9999")
+	conf := configs.Get()
+
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", "127.0.0.1", conf.ServerPort))
 	if err != nil {
 		log.Fatalln(err)
 	}
