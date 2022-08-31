@@ -22,7 +22,6 @@ func main() {
 	}
 	defer listener.Close()
 
-	//tunnelConn := tunnel.NewTunnel()
 	roomConn := room.NewRoom(roomSize)
 	connectedUsers := make(map[int]string, roomSize)
 	nameChan := make(chan string)
@@ -40,19 +39,9 @@ func main() {
 
 		numConn++
 		wg.Add(1)
-		go handleName(c, nameChan, &wg, numConn, roomConn.Size())
+		go handleName(c, nameChan, &wg, numConn, roomConn)
 
-		roomConn.AddNewConnection(c)
 		fmt.Printf("new conn: %s\n", con.RemoteAddr().String())
-		fmt.Println(roomConn)
-
-		//if tunnelConn.Conn1 == nil {
-		//	tunnelConn.Conn1 = con
-		//	fmt.Printf("user 1: %s\n", con.RemoteAddr().String())
-		//} else {
-		//	tunnelConn.Conn2 = con
-		//	fmt.Printf("user 2: %s\n", con.RemoteAddr().String())
-		//}
 	}
 
 	id := 0
@@ -65,42 +54,25 @@ func main() {
 
 	fmt.Println("here we go")
 
-	//firstConn := make(chan string)
-	//secondConn := make(chan string)
-
 	mainChan := make(chan *message.Message)
 
 	for i := 0; i < roomConn.Size(); i++ {
 		go handleClientRequest(roomConn.Connections[i], mainChan)
 	}
 
-	//go handleClientRequest(tunnelConn.Conn1, secondConn)
-	//go handleClientRequest(tunnelConn.Conn2, firstConn)
-
 	for getMessage := range mainChan {
 		for i := 0; i < roomConn.Size(); i++ {
+			if getMessage.Name == roomConn.Connections[i].Name {
+				continue
+			}
 			if _, err := roomConn.Connections[i].Conn.Write([]byte(fmt.Sprintf("%s-> %s\n", getMessage.Name, strings.TrimSpace(getMessage.Text)))); err != nil {
 				log.Printf("failed to respond to client: %v\n", err)
 			}
 		}
 	}
-
-	//for {
-	//	select {
-	//	case message := <-firstConn:
-	//		if _, err := tunnelConn.Conn1.Write([]byte(fmt.Sprintf("%s-> %s\n", connectedUsers[1], strings.TrimSpace(message)))); err != nil {
-	//			log.Printf("failed to respond to client: %v\n", err)
-	//		}
-	//	case message := <-secondConn:
-	//		if _, err := tunnelConn.Conn2.Write([]byte(fmt.Sprintf("%s-> %s\n", connectedUsers[0], strings.TrimSpace(message)))); err != nil {
-	//			log.Printf("failed to respond to client: %v\n", err)
-	//		}
-	//	}
-	//}
-
 }
 
-func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, numConn int, roomSize int) {
+func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, numConn int, room *room.Room) {
 	if _, err := con.Conn.Write([]byte("Enter your name:\n")); err != nil {
 		log.Printf("failed: %v\n", err)
 	}
@@ -108,8 +80,8 @@ func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, 
 	clientRequest, _ := clientReader.ReadString('\n')
 	nameChan <- strings.TrimSpace(clientRequest)
 	con.Name = strings.TrimSpace(clientRequest)
-	fmt.Printf("con.Name: %s", con.Name)
-	if numConn == roomSize {
+	room.AddNewConnection(con)
+	if numConn == room.Size() {
 		close(nameChan)
 	}
 	wg.Done()
@@ -130,8 +102,7 @@ func handleClientRequest(con conn.Connection, mChan chan *message.Message) {
 				log.Println("client requested server to close the connection so closing")
 				return
 			} else {
-				m := message.NewMessage(con.Name, clientRequest)
-				mChan <- m
+				mChan <- message.NewMessage(con.Name, clientRequest)
 			}
 		case io.EOF:
 			log.Println("client closed the connection by terminating the process")
