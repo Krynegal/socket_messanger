@@ -13,10 +13,10 @@ import (
 	"sync"
 )
 
-var roomSize = 4
+var roomSize = 2
 
 func main() {
-	listener, err := net.Listen("tcp", "0.0.0.0:9999")
+	listener, err := net.Listen("tcp", "localhost:9999")
 	if err != nil {
 		log.Fatalln(err)
 	}
