@@ -52,7 +52,7 @@ func main() {
 	}
 	wg.Wait()
 
-	fmt.Println("here we go")
+	//fmt.Println("here we go")
 
 	mainChan := make(chan *message.Message)
 
