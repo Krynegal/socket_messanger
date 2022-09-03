@@ -19,7 +19,7 @@ var roomSize = 2
 func main() {
 	conf := configs.Get()
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", "127.0.0.1", conf.ServerPort))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", "0.0.0.0", conf.ServerPort))
 	if err != nil {
 		log.Fatalln(err)
 	}
