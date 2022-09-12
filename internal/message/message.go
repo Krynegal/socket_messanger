@@ -1,13 +1,15 @@
 package message
 
 type Message struct {
-	Name string
-	Text string
+	SenderID int32
+	Name     string
+	Text     string
 }
 
-func NewMessage(name, text string) *Message {
+func NewMessage(senderID int32, name, text string) *Message {
 	return &Message{
-		Name: name,
-		Text: text,
+		SenderID: senderID,
+		Name:     name,
+		Text:     text,
 	}
 }

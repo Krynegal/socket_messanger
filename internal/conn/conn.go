@@ -6,9 +6,10 @@ import (
 )
 
 type Connection struct {
-	Name string
 	net.Conn
-	Ch chan message.Message
+	ID   int32
+	Name string
+	Ch   chan message.Message
 }
 
 func NewConnection(con net.Conn) *Connection {

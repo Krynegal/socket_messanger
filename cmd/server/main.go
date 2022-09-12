@@ -31,8 +31,8 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	numConn := 0
-	for numConn != roomSize {
+	var numConn int32 = 0
+	for numConn != int32(roomSize) {
 		con, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
@@ -42,6 +42,7 @@ func main() {
 
 		numConn++
 		wg.Add(1)
+
 		go handleName(c, nameChan, &wg, numConn, roomConn)
 
 		fmt.Printf("new conn: %s\n", con.RemoteAddr().String())
@@ -65,7 +66,7 @@ func main() {
 
 	for getMessage := range mainChan {
 		for i := 0; i < roomConn.Size(); i++ {
-			if getMessage.Name == roomConn.Connections[i].Name {
+			if getMessage.SenderID == roomConn.Connections[i].ID {
 				continue
 			}
 			if _, err := roomConn.Connections[i].Conn.Write([]byte(fmt.Sprintf("%s-> %s\n", getMessage.Name, strings.TrimSpace(getMessage.Text)))); err != nil {
@@ -75,18 +76,24 @@ func main() {
 	}
 }
 
-func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, numConn int, room *room.Room) {
+func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, numConn int32, room *room.Room) {
 	if _, err := con.Conn.Write([]byte("Enter your name:\n")); err != nil {
 		log.Printf("failed: %v\n", err)
 	}
+
 	clientReader := bufio.NewReader(con.Conn)
 	clientRequest, _ := clientReader.ReadString('\n')
 	nameChan <- strings.TrimSpace(clientRequest)
+	con.ID = numConn
+
 	con.Name = strings.TrimSpace(clientRequest)
+
 	room.AddNewConnection(con)
-	if numConn == room.Size() {
+
+	if numConn == int32(room.Size()) {
 		close(nameChan)
 	}
+
 	wg.Done()
 }
 
@@ -105,7 +112,7 @@ func handleClientRequest(con conn.Connection, mChan chan *message.Message) {
 				log.Println("client requested server to close the connection so closing")
 				return
 			} else {
-				mChan <- message.NewMessage(con.Name, clientRequest)
+				mChan <- message.NewMessage(con.ID, con.Name, clientRequest)
 			}
 		case io.EOF:
 			log.Println("client closed the connection by terminating the process")
