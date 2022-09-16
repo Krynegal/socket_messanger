@@ -14,7 +14,7 @@ import (
 	"sync"
 )
 
-var roomSize = 2
+var roomCapacity = 2
 
 func main() {
 	conf := configs.Get()
@@ -25,14 +25,13 @@ func main() {
 	}
 	defer listener.Close()
 
-	roomConn := room.NewRoom(roomSize)
-	connectedUsers := make(map[int]string, roomSize)
+	roomConn := room.NewRoom(roomCapacity)
+	connectedUsers := make(map[int]string, roomCapacity)
 	nameChan := make(chan string)
 
 	var wg sync.WaitGroup
 
-	var numConn int32 = 0
-	for numConn != int32(roomSize) {
+	for roomConn.GetSize() != roomConn.GetCapacity() {
 		con, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
@@ -40,15 +39,15 @@ func main() {
 		}
 		c := conn.NewConnection(con)
 
-		numConn++
+		roomConn.Size++
 		wg.Add(1)
-		go handleName(c, nameChan, &wg, numConn, roomConn)
+		go handleName(c, nameChan, &wg, roomConn)
 
 		fmt.Printf("new conn: %s\n", con.RemoteAddr().String())
 	}
 
 	id := 0
-	for i := 0; i < roomSize; i++ {
+	for i := 0; i < roomConn.GetCapacity(); i++ {
 		connectedUsers[id] = <-nameChan
 		fmt.Println(connectedUsers)
 		id++
@@ -75,18 +74,17 @@ func main() {
 	}
 }
 
-func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, numConn int32, room *room.Room) {
+func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, room *room.Room) {
 	defer wg.Done()
 	if _, err := con.Conn.Write([]byte("Enter your name:\n")); err != nil {
 		log.Printf("failed: %v\n", err)
 	}
-
+	con.ID = int32(room.Size)
 	clientReader := bufio.NewReader(con.Conn)
 	clientRequest, _ := clientReader.ReadString('\n')
-	nameChan <- strings.TrimSpace(clientRequest)
-	con.ID = numConn
 	con.Name = strings.TrimSpace(clientRequest)
 	room.AddNewConnection(con)
+	nameChan <- strings.TrimSpace(clientRequest)
 }
 
 func handleClientRequest(con conn.Connection, mChan chan *message.Message) {

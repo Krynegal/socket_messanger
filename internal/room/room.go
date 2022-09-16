@@ -7,21 +7,20 @@ import (
 
 type Room struct {
 	Connections []conn.Connection
-	size        int
+	Size        int
 	capacity    int
 }
 
 func NewRoom(cap int) *Room {
 	return &Room{
 		Connections: make([]conn.Connection, 0, cap),
-		size:        0,
+		Size:        0,
 		capacity:    cap,
 	}
 }
 
 func (r *Room) AddNewConnection(conn *conn.Connection) {
 	r.Connections = append(r.Connections, *conn)
-	r.size++
 }
 
 func (r Room) GetCapacity() int {
@@ -29,7 +28,7 @@ func (r Room) GetCapacity() int {
 }
 
 func (r Room) GetSize() int {
-	return r.size
+	return r.Size
 }
 
 func (r *Room) String() string {
