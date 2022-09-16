@@ -31,6 +31,10 @@ func (r Room) GetSize() int {
 	return r.Size
 }
 
+func (r Room) GetLastConnID() int {
+	return r.Connections[r.Size-1].ID
+}
+
 func (r *Room) String() string {
 	return fmt.Sprintf("Number of current connections: %v", len(r.Connections))
 }

@@ -7,7 +7,7 @@ import (
 
 type Connection struct {
 	net.Conn
-	ID   int32
+	ID   int
 	Name string
 	Ch   chan message.Message
 }

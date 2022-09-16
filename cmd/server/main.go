@@ -14,7 +14,7 @@ import (
 	"sync"
 )
 
-var roomCapacity = 2
+var roomCapacity = 3
 
 func main() {
 	conf := configs.Get()
@@ -28,6 +28,7 @@ func main() {
 	roomConn := room.NewRoom(roomCapacity)
 	connectedUsers := make(map[int]string, roomCapacity)
 	nameChan := make(chan string)
+	//newConnChan := make(chan conn.Connection)
 
 	var wg sync.WaitGroup
 
@@ -59,6 +60,14 @@ func main() {
 	mainChan := make(chan *message.Message)
 
 	for i := 0; i < roomConn.GetCapacity(); i++ {
+		if roomConn.Connections[i].ID != roomConn.GetLastConnID() {
+			if _, err = roomConn.Connections[i].Conn.Write([]byte("All users are here!\n")); err != nil {
+				log.Printf("failed to respond to client: %v\n", err)
+			}
+		}
+	}
+
+	for i := 0; i < roomConn.GetCapacity(); i++ {
 		go handleClientRequest(roomConn.Connections[i], mainChan)
 	}
 
@@ -79,12 +88,19 @@ func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, 
 	if _, err := con.Conn.Write([]byte("Enter your name:\n")); err != nil {
 		log.Printf("failed: %v\n", err)
 	}
-	con.ID = int32(room.Size)
+	con.ID = room.Size
 	clientReader := bufio.NewReader(con.Conn)
 	clientRequest, _ := clientReader.ReadString('\n')
 	con.Name = strings.TrimSpace(clientRequest)
 	room.AddNewConnection(con)
-	nameChan <- strings.TrimSpace(clientRequest)
+	nameChan <- con.Name
+	fmt.Println("roomCap", room.GetCapacity())
+	fmt.Println("roomSize", room.GetSize())
+	if len(room.Connections) != room.GetCapacity() {
+		if _, err := con.Conn.Write([]byte("Waiting for other users...\n")); err != nil {
+			log.Printf("failed: %v\n", err)
+		}
+	}
 }
 
 func handleClientRequest(con conn.Connection, mChan chan *message.Message) {
