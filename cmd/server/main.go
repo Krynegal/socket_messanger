@@ -42,7 +42,6 @@ func main() {
 
 		numConn++
 		wg.Add(1)
-
 		go handleName(c, nameChan, &wg, numConn, roomConn)
 
 		fmt.Printf("new conn: %s\n", con.RemoteAddr().String())
@@ -60,12 +59,12 @@ func main() {
 
 	mainChan := make(chan *message.Message)
 
-	for i := 0; i < roomConn.Size(); i++ {
+	for i := 0; i < roomConn.GetCapacity(); i++ {
 		go handleClientRequest(roomConn.Connections[i], mainChan)
 	}
 
 	for getMessage := range mainChan {
-		for i := 0; i < roomConn.Size(); i++ {
+		for i := 0; i < roomConn.GetCapacity(); i++ {
 			if getMessage.SenderID == roomConn.Connections[i].ID {
 				continue
 			}
@@ -77,6 +76,7 @@ func main() {
 }
 
 func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, numConn int32, room *room.Room) {
+	defer wg.Done()
 	if _, err := con.Conn.Write([]byte("Enter your name:\n")); err != nil {
 		log.Printf("failed: %v\n", err)
 	}
@@ -85,16 +85,8 @@ func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, 
 	clientRequest, _ := clientReader.ReadString('\n')
 	nameChan <- strings.TrimSpace(clientRequest)
 	con.ID = numConn
-
 	con.Name = strings.TrimSpace(clientRequest)
-
 	room.AddNewConnection(con)
-
-	//if numConn == int32(room.Size()) {
-	//	close(nameChan)
-	//}
-
-	wg.Done()
 }
 
 func handleClientRequest(con conn.Connection, mChan chan *message.Message) {
@@ -104,7 +96,6 @@ func handleClientRequest(con conn.Connection, mChan chan *message.Message) {
 
 	for {
 		clientRequest, err := clientReader.ReadString('\n')
-
 		switch err {
 		case nil:
 			clientRequest = strings.TrimSpace(clientRequest)
