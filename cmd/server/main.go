@@ -49,8 +49,8 @@ func main() {
 	}
 
 	id := 0
-	for name := range nameChan {
-		connectedUsers[id] = name
+	for i := 0; i < roomSize; i++ {
+		connectedUsers[id] = <-nameChan
 		fmt.Println(connectedUsers)
 		id++
 	}
@@ -90,9 +90,9 @@ func handleName(con *conn.Connection, nameChan chan string, wg *sync.WaitGroup, 
 
 	room.AddNewConnection(con)
 
-	if numConn == int32(room.Size()) {
-		close(nameChan)
-	}
+	//if numConn == int32(room.Size()) {
+	//	close(nameChan)
+	//}
 
 	wg.Done()
 }
